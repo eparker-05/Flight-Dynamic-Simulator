@@ -8,7 +8,7 @@ Degrees of freedom:
 * Yaw
 
 Aircraft:
-* Northrup F-5
+* Northrup F-5 Tiger II
 
 Assumptions: 
 * Constant gravity 
