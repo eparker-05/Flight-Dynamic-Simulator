@@ -1,0 +1,40 @@
+Model Scope and Parameters for the Northrup F-5 Tiger II: 
+
+States - Translational Motion
+x - position in x
+y - position in y
+z - position in z
+
+Linear Velocities - 
+u - forward velocity 
+v -sideways velocity
+w - vertical velocity
+
+Angular orientation - 
+ϕ — roll
+θ — pitch
+𝜓 - yaw
+
+Angular rates - 
+p - roll rate
+q - pitch rate
+r - yaw rate
+
+Therefore X = [x,y,z,u,v,w,ϕ,θ,𝜓,p,q,r] for the state vector
+
+Forces - 
+Lift L 
+Drag D
+Thrust T
+Weight W
+  
+   X
+F= Y where X = T - D + Xgrav, Y = Yaero + Ygrav and Z = - L + Zgrav
+   Z 
+
+Moments - 
+Pitching moment M
+
+    L
+M = M where L = roll moment, M = pitch moment and N = yaw moment
+    N
