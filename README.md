@@ -18,5 +18,5 @@ About the aircraft:
 A twin-engine, supersonic fighter developed in the 60s by Northrup corporation. The F-5 features a conventional aerodynamic layout with straight wings, a narrow fuselage, and two small turbojet engines, which makes it relatively easy to maintain and operate. Typical flight conditions include medium to high altitude operation, roughly 25,000-40,000ft. Aircraft typically cruises around Mach 0.8-0.9 while max speed is around Mach 1.6. With its light weight and small wing area design, the aircraft is capable of rapid acceleration and high maneuverability. 
 
 Reccommended Directions: 
-To compile - g++ Simulation.cpp Aerodynamics.cpp Dynamics.cpp -o sim
-To run - ./sim
+* To compile - g++ Simulation.cpp Aerodynamics.cpp Dynamics.cpp -o sim
+* To run - ./sim
