@@ -17,6 +17,12 @@ double compute_lift(double, double);
 double compute_sideforce(double, double);
 double compute_Cm(double, double, double, double);
 double compute_pitch_moment(double, double);
+double compute_p_hat(const AircraftState& state, const AircraftParameters& f5, double);
+double compute_Cl(const AircraftParameters& f5, double, double);
+double compute_roll_moment(const AircraftParameters& f5, double, double);
+double compute_r_hat(const AircraftParameters& f5, const AircraftState& state, double);
+double compute_Cn(const AircraftParameters& f5, double, double);
+double compute_yaw_moment(const AircraftParameters& f5, double, double);
 AerodynamicForces compute_forces(const AircraftState& state);
 
 void print(){
@@ -118,4 +124,28 @@ double compute_Cm(double alpha, double q, double V, double delta_e)
 double compute_pitch_moment(double Cm, double V)
 {
     return 0.5 * f5.rho * V * V * f5.wingArea * f5.chord * Cm;
+}
+double compute_p_hat(const AircraftState& state, const AircraftParameters& f5, double V)
+{
+    return (f5.wingspan / (2 * V)) * state.p;
+}
+double compute_Cl(const AircraftParameters& f5, double beta, double p_hat)
+{
+    return f5.Cl_beta * beta + f5.Cl_p * p_hat;
+}
+double compute_roll_moment(const AircraftParameters& f5, double V, double Cl)
+{
+    return 0.5 * f5.rho * f5.wingArea * V * V * f5.wingspan * Cl;
+}
+double compute_r_hat(const AircraftParameters& f5, const AircraftState& state, double V)
+{
+    return (state.r * f5.wingspan) / (2 * V);
+}
+double compute_Cn(const AircraftParameters& f5, double beta, double r_hat)
+{
+    return f5.Cn_beta * beta + f5.Cn_r * r_hat;
+}
+double compute_yaw_moment(const AircraftParameters& f5, double V, double Cn)
+{
+    return 0.5 * f5.rho * f5.wingArea * f5.wingspan * V * V * Cn;
 }
