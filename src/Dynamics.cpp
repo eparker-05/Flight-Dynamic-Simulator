@@ -4,17 +4,9 @@
 #include "AircraftState.h"
 #include "Aerodynamics.h"
 #include "AerodynamicForces.h"
+#include "Dynamics.h"
 
 using namespace std;
-
-double compute_Fx(AerodynamicForces& f, double, double);
-double compute_Fy(AerodynamicForces& f);
-double compute_Fz(AerodynamicForces& f, double, double);
-double compute_u_dot(double, double, double, double);
-double compute_v_dot(double, double);
-double compute_w_dot(double, double, double, double);
-double compute_q_dot(double, double);
-double compute_theta_dot(double);
 
 void printdynamics(){
 
@@ -54,9 +46,11 @@ cout << "The force along the y body axis is " << Fy << "N." << endl;
 cout << "The force along the z body axis is " << Fz << "N." << endl;
 
 double q = 0.0;
-double u_dot = compute_u_dot(Fx, mass, q, state.w);
-double v_dot = compute_v_dot(Fy, mass);
-double w_dot = compute_w_dot(Fz, mass, q, state.u);
+double p = 0.0;
+double r = 0.0;
+double u_dot = compute_u_dot(Fx, mass, q, state.w, r, state.v);
+double v_dot = compute_v_dot(Fy, mass, p, state.w, r, state.u);
+double w_dot = compute_w_dot(Fz, mass, q, state.u, p, state.v);
 
 cout << "Accelerations: " << endl;
 cout << "u_dot = " << u_dot << endl;
@@ -66,15 +60,15 @@ cout << "w_dot = " << w_dot << endl;
 
 }
 
-double compute_Fx(AerodynamicForces& f, double alpha, double thrust)
+double compute_Fx(const AerodynamicForces& f, double alpha, double thrust)
 {
 return thrust - f.drag * cos(alpha) - f.lift * sin(alpha);
 }
-double compute_Fy(AerodynamicForces& f)
+double compute_Fy(const AerodynamicForces& f)
 {
 return f.sideforce;
 }
-double compute_Fz(AerodynamicForces& f, double alpha, double mass)
+double compute_Fz(const AerodynamicForces& f, double alpha, double mass)
 {
 return - f.drag * sin(alpha) - mass * 9.81 + f.lift * cos(alpha);
 }
@@ -83,24 +77,52 @@ return - f.drag * sin(alpha) - mass * 9.81 + f.lift * cos(alpha);
     
  //   return forces;
 //}
-double compute_u_dot(double Fx, double mass, double q, double w)
+double compute_u_dot(double Fx, double mass, double q, double w, double r, double v)
 {
-    return Fx / mass - q * w;
+    return Fx / mass - q * w + r * v;
 }
-double compute_v_dot(double Fy, double mass)
+double compute_v_dot(double Fy, double mass, double p, double w, double r, double u)
 {
-    return Fy / mass;
+    return Fy / mass + p * w - r * u;
 }
-double compute_w_dot(double Fz, double mass, double q, double u)
+double compute_w_dot(double Fz, double mass, double q, double u, double p, double v)
 {
-    return Fz / mass + q * u;
+    return Fz / mass + q * u - p * v;
 }
-double compute_q_dot(double M, double Iy)
+double compute_q_dot(double M, double Ix, double Iy, double Iz, double p, double r)
 {
-    return M / Iy;
+    return (M - (Ix - Iz) * p * r) / Iy;
 }
 
-double compute_theta_dot(double q)
+double compute_theta_dot(double q, const AircraftState& state, double r)
 {
-    return q;
+    return q * cos(state.phi) - r * sin(state.phi);
+}
+double compute_p_dot(double L, double Ix, double Iy, double Iz, double q, double r)
+{
+    return (L - ( Iz - Iy) * q * r) / Ix;
+}
+double compute_phi_dot(double p, double q, double r, const AircraftState& state)
+{
+    return p + q * sin(state.phi) * tan(state.theta) + r * cos(state.phi) * tan(state.theta);
+}
+double compute_r_dot(double N, double Ix, double Iy, double Iz, double p, double q)
+{
+    return (N - (Iy - Ix) * p * q) / Iz;
+}
+double compute_psi_dot(double r, double q, const AircraftState& state)
+{
+    return (r * cos(state.phi ) + q * sin(state.phi)) / cos(state.theta);
+}
+double compute_x_dot(const AircraftState& state, double u, double v, double w)
+{
+    return u * cos(state.theta) * cos(state.psi) + v * (sin(state.phi) * sin(state.theta) * cos(state.psi) - cos(state.phi) * sin(state.psi)) + w * ( cos(state.phi) * sin(state.theta) * cos(state.psi) + sin(state.phi) * sin(state.psi));
+}
+double compute_y_dot(const AircraftState& state, double u, double v, double w)
+{
+    return u * cos(state.theta) * sin(state.psi) + v * (sin(state.phi) * sin(state.theta) * sin(state.psi) + cos(state.phi) * cos(state.psi)) + w * (cos(state.phi) * sin(state.theta) * sin(state.psi) - sin(state.phi) * cos(state.psi));
+}
+double compute_z_dot(const AircraftState& state, double u, double v, double w)
+{
+    return - u * sin(state.theta) + v * sin(state.phi) * cos(state.theta) + w * cos(state.phi) * cos(state.theta);
 }
