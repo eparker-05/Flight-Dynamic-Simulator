@@ -8,6 +8,7 @@
 #include "Aerodynamics.h"
 #include "AerodynamicForces.h"
 #include "Dynamics.h"
+
 using namespace std;
 
 struct StepPhysics
@@ -15,6 +16,8 @@ struct StepPhysics
     double V;
     double alpha;
     double beta;
+    double p_hat;
+    double r_hat;
 
     AerodynamicForces forces;
 
@@ -25,19 +28,31 @@ struct StepPhysics
     double u_dot;
     double v_dot; 
     double w_dot;
+    double w_rel;
 
     double Cm;
     double M;
     double q_dot;
     double theta_dot;
+
+    double Cl;
+    double L;
+    double p_dot;
+    double phi_dot;
+
+    double Cn;
+    double N;
+    double r_dot;
+    double psi_dot;
 };
 
-StepPhysics compute_step_physics(const AircraftState& state, double, double, double, double);
+StepPhysics compute_step_physics(const AircraftState& state, const AircraftParameters& f5, double, double, double, double);
 AircraftState update_state(const AircraftState& state, const StepPhysics& physics, double);
 double compute_trim_alpha(AircraftParameters& f5);
 
 int main(){
 AircraftState state;
+AircraftParameters f5;
 state.u =  179.936; // m/s
 state.v = 0.00; // m/s 
 state.w = 4.81234; // m/s
@@ -53,7 +68,15 @@ double tol = 0.17; // rad
 
 state.theta = 0.0267384;
 state.q = 0.0;
+state.p = 0.0;
+state.r = 0.01;
+state.psi = 0.0;
+state.phi = 0.0;
 double delta_e_trim = 0.009;
+double theta_command = 0.0267384;
+double delta_e = delta_e_trim;
+double Kp_theta = 0.015;
+double Kd = 0.04;
 //AerodynamicForces forces;
 
 double u_gust = 0.0;
@@ -65,7 +88,7 @@ cin >> gust;
 
 ofstream outFile("simulation_output.csv");
 
-outFile << "time,u,v,w,x,y,z,alpha,V,Fx,Fz,u_dot,w_dot,q,theta\n";
+outFile << "time,u,v,w,x,y,z,alpha,beta,V,Fx,Fz,Fy,u_dot,w_dot,q,theta, delta_e, p, phi_dot, Cl, phi, r, Cn, N, psi_dot, r_dot, psi, w_rel, Cm\n";
 outFile << fixed << setprecision(6);
 
 for(double t=0.0; t<=10; t+=0.01){
@@ -73,7 +96,20 @@ double w_gust = 0.0;
 if(t>=2.0){
     w_gust = gust;
 }
-StepPhysics physics = compute_step_physics(state, w_gust, mass, thrust, delta_e_trim);
+
+double theta_error = theta_command - state.theta;
+
+// P-D controller
+double delta_e_correction = Kp_theta * theta_error - Kd * state.q;
+
+// total elevator command = trim + correction
+delta_e = delta_e_trim + delta_e_correction;
+
+// optional elevator saturation
+if (delta_e > 0.35) delta_e = 0.35;
+if (delta_e < -0.35) delta_e = -0.35;
+
+StepPhysics physics = compute_step_physics(state, f5, w_gust, mass, thrust, delta_e);
 double alpha_rel = physics.alpha;
 
 if (std::isnan(physics.V) || std::isnan(physics.alpha) || std::isnan(physics.beta) ||
@@ -97,13 +133,28 @@ outFile << t << ","
         << state.y << ","
         << state.z << ","
         << physics.alpha << ","
+        << physics.beta << ","
         << physics.V << ","
         << physics.Fx << ","
         << physics.Fz << ","
+        << physics.Fy << ","
         << physics.u_dot << ","
         << physics.w_dot << ","
         << state.q << ","
-        << state.theta << "\n";
+        << state.theta << ","
+        << delta_e << "," 
+        << state.p << ","
+        << physics.phi_dot << ","
+        << physics.Cl << ","
+        << state.phi << ","
+        << state.r << ","
+        << physics.Cn << ","
+        << physics.N << ","
+        << physics.psi_dot << ","
+        << physics.r_dot << ","
+        << state.psi << ","
+        << physics.w_rel << ","
+        << physics.Cm << "\n";
 
 cout << "Updated Velocities: " << endl;
 cout << "u_new = " << state.u << endl;
@@ -120,17 +171,19 @@ cout << "z = " << state.z << "m." << endl;
 outFile.close();
 return 0;
 }
-StepPhysics compute_step_physics(const AircraftState& state, double w_gust, double mass, double thrust, double delta_e)
+StepPhysics compute_step_physics(const AircraftState& state, const AircraftParameters& f5, double w_gust, double mass, double thrust, double delta_e)
 {
     StepPhysics physics;
 
     double u_rel = state.u;
     double v_rel = state.v;
-    double w_rel = state.w - w_gust;
+    physics.w_rel = state.w - w_gust;
 
-    physics.V = sqrt(u_rel * u_rel + v_rel * v_rel + w_rel * w_rel);
-    physics.alpha = atan2(w_rel, u_rel);
+    physics.V = sqrt(u_rel * u_rel + v_rel * v_rel + physics.w_rel * physics.w_rel);
+    physics.alpha = atan2(physics.w_rel, u_rel);
     physics.beta = asin(v_rel / physics.V);
+    physics.p_hat = compute_p_hat(state, f5, physics.V);
+    physics.r_hat = compute_r_hat(f5, state, physics.V);
 
     double CL = compute_CL(physics.alpha, delta_e);
     double CD = compute_CD(CL);
@@ -145,16 +198,22 @@ StepPhysics compute_step_physics(const AircraftState& state, double w_gust, doub
     physics.Fy = compute_Fy(physics.forces);
     physics.Fz = compute_Fz(physics.forces, physics.alpha, mass);
 
-    const double g = 9.81;
-    physics.u_dot = compute_u_dot(physics.Fx, mass, state.q, state.w);
-    physics.v_dot = compute_v_dot(physics.Fy, mass);
-    physics.w_dot = compute_w_dot(physics.Fz, mass, state.q, state.u);
-    AircraftParameters f5;
+    physics.u_dot = compute_u_dot(physics.Fx, mass, state.q, state.w, state.r, state.v);
+    physics.v_dot = compute_v_dot(physics.Fy, mass, state.p, state.w, state.r, state.u);
+    physics.w_dot = compute_w_dot(physics.Fz, mass, state.q, state.u, state.p, state.v);
     physics.Cm = compute_Cm(physics.alpha, state.q, physics.V, delta_e);
     physics.M = compute_pitch_moment(physics.Cm, physics.V);
+    physics.Cl = compute_Cl(f5, physics.beta, physics.p_hat);
+    physics.L = compute_roll_moment(f5, physics.V, physics.Cl);
+    physics.Cn = compute_Cn(f5, physics.beta, physics.r_hat);
+    physics.N = compute_yaw_moment(f5, physics.V, physics.Cn);
 
-    physics.q_dot = compute_q_dot(physics.M, f5.Iy);
-    physics.theta_dot = compute_theta_dot(state.q);
+    physics.q_dot = compute_q_dot(physics.M, f5.Ix, f5.Iy, f5.Iz, state.p, state.r);
+    physics.theta_dot = compute_theta_dot(state.q, state, state.r);
+    physics.p_dot = compute_p_dot(physics.L, f5.Ix, f5.Iy, f5.Iz, state.q, state.r);
+    physics.phi_dot = compute_phi_dot(state.p, state.q, state.r, state);
+    physics.r_dot = compute_r_dot(physics.N, f5.Ix, f5.Iy, f5.Iz, state.p, state.q);
+    physics.psi_dot = compute_psi_dot(state.r, state.q, state);
 
     return physics;
 }
@@ -165,12 +224,20 @@ AircraftState update_state(const AircraftState& state, const StepPhysics& physic
     new_state.v = state.v + physics.v_dot * dt;
     new_state.w = state.w + physics.w_dot * dt;
 
-    new_state.x = state.x + (state.u * cos(state.theta) - state.w * sin(state.theta)) * dt;
-    new_state.y = state.y + state.v * dt;
-    new_state.z = state.z + (state.u * sin(state.theta) + state.w * cos(state.theta)) * dt;
+    double x_dot = compute_x_dot(state, state.u, state.v, state.w);
+    double y_dot = compute_y_dot(state, state.u, state.v, state.w);
+    double z_dot = compute_z_dot(state, state.u, state.v, state.w);
+    new_state.x = state.x + x_dot * dt;
+    new_state.y = state.y + y_dot * dt;
+    new_state.z = state.z + z_dot * dt;
 
     new_state.q = state.q + physics.q_dot * dt;
     new_state.theta = state.theta + physics.theta_dot * dt;
+    new_state.p = state.p + physics.p_dot * dt;
+    new_state.phi = state.phi + physics.phi_dot * dt;
+    new_state.r = state.r + physics.r_dot * dt;
+    new_state.psi = state.psi + physics.psi_dot * dt;
 
     return new_state;
 }
+
