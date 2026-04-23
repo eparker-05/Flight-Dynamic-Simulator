@@ -41,10 +41,12 @@ double Fx = compute_Fx(forces, alpha, thrust);
 double Fy = compute_Fy(forces);
 double Fz = compute_Fz(forces, alpha, mass);
 
+//Printing results
 cout << "The force along the x body axis is " << Fx << "N." << endl;
 cout << "The force along the y body axis is " << Fy << "N." << endl;
 cout << "The force along the z body axis is " << Fz << "N." << endl;
 
+//Initiallizing values to 0
 double q = 0.0;
 double p = 0.0;
 double r = 0.0;
@@ -52,6 +54,7 @@ double u_dot = compute_u_dot(Fx, mass, q, state.w, r, state.v);
 double v_dot = compute_v_dot(Fy, mass, p, state.w, r, state.u);
 double w_dot = compute_w_dot(Fz, mass, q, state.u, p, state.v);
 
+//Printing computed accelerations
 cout << "Accelerations: " << endl;
 cout << "u_dot = " << u_dot << endl;
 cout << "v_dot = " << v_dot << endl;
@@ -60,6 +63,7 @@ cout << "w_dot = " << w_dot << endl;
 
 }
 
+//Function definitions to compute body forces/state derivatives 
 double compute_Fx(const AerodynamicForces& f, double alpha, double thrust)
 {
 return thrust - f.drag * cos(alpha) - f.lift * sin(alpha);
@@ -72,11 +76,7 @@ double compute_Fz(const AerodynamicForces& f, double alpha, double mass)
 {
 return - f.drag * sin(alpha) - mass * 9.81 + f.lift * cos(alpha);
 }
-//double AerodynamicForces compute_forces(const AircraftState& state)
-//{
-    
- //   return forces;
-//}
+
 double compute_u_dot(double Fx, double mass, double q, double w, double r, double v)
 {
     return Fx / mass - q * w + r * v;
