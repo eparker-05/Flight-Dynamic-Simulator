@@ -10,7 +10,7 @@
 #include "Dynamics.h"
 
 using namespace std;
-
+//structure containing all variables tht need updating 
 struct StepPhysics
 {
     double V;
@@ -66,12 +66,12 @@ double mass = 7000.0; // kg
 double thrust = 11106.4; //N
 double tol = 0.17; // rad
 
-state.theta = 0.0267384;
+state.theta = 0.0267384; //rad
 state.q = 0.0;
 state.p = 0.0;
 state.r = 0.01;
-state.psi = 0.0;
-state.phi = 0.0;
+state.psi = 0.0; //rad
+state.phi = 0.0; //rad
 double delta_e_trim = 0.009;
 double theta_command = 0.0267384;
 double delta_e = delta_e_trim;
@@ -88,6 +88,7 @@ cin >> gust;
 
 ofstream outFile("simulation_output.csv");
 
+//Beginning our CSV file
 outFile << "time,u,v,w,x,y,z,alpha,beta,V,Fx,Fz,Fy,u_dot,w_dot,q,theta, delta_e, p, phi_dot, Cl, phi, r, Cn, N, psi_dot, r_dot, psi, w_rel, Cm\n";
 outFile << fixed << setprecision(6);
 
@@ -102,7 +103,7 @@ double theta_error = theta_command - state.theta;
 // P-D controller
 double delta_e_correction = Kp_theta * theta_error - Kd * state.q;
 
-// total elevator command = trim + correction
+//total elevator command = trim + correction
 delta_e = delta_e_trim + delta_e_correction;
 
 // optional elevator saturation
@@ -125,6 +126,8 @@ if (std::isnan(physics.V) || std::isnan(physics.alpha) || std::isnan(physics.bet
 
 //-------Updating Velocity & Position States---------
 state = update_state(state, physics, dt);
+
+//---------List of all printed variables--------
 outFile << t << ","
         << state.u << ","
         << state.v << ","
@@ -156,21 +159,11 @@ outFile << t << ","
         << physics.w_rel << ","
         << physics.Cm << "\n";
 
-cout << "Updated Velocities: " << endl;
-cout << "u_new = " << state.u << endl;
-cout << "v_new = " << state.v << endl;
-cout << "w_new = " << state.w << endl;
-cout << "Updated Position: " << endl;
-cout << "x = " << state.x << "m." << endl;
-cout << "y = " << state.y << "m." << endl;
-cout << "z = " << state.z << "m." << endl;
-
-
-
 }
-outFile.close();
+outFile.close(); //Closing the CSV file
 return 0;
 }
+//This massive thing is where I update all of my forces and parameters each iteration
 StepPhysics compute_step_physics(const AircraftState& state, const AircraftParameters& f5, double w_gust, double mass, double thrust, double delta_e)
 {
     StepPhysics physics;
@@ -217,6 +210,7 @@ StepPhysics compute_step_physics(const AircraftState& state, const AircraftParam
 
     return physics;
 }
+//This is where I specifically update the aircraft's state - not forces
 AircraftState update_state(const AircraftState& state, const StepPhysics& physics, double dt)
 {
     AircraftState new_state = state;
@@ -240,4 +234,3 @@ AircraftState update_state(const AircraftState& state, const StepPhysics& physic
 
     return new_state;
 }
-
